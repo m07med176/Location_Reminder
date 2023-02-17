@@ -27,7 +27,8 @@
             android:text="@{@string/detail_title(reminderDataItem.title)}"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="@string/detail_title" />
+            tools:text="@string/detail_title"
+            android:layout_marginLeft="@dimen/margin_top" />
 
         <TextView
             android:id="@+id/description_textView"
