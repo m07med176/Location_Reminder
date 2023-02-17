@@ -10,6 +10,8 @@ android {
     buildToolsVersion "29.0.2"
 
     defaultConfig {
+        multiDexEnabled true
+
         applicationId "com.udacity.project4"
         minSdkVersion rootProject.minSdkVersion
         targetSdkVersion rootProject.targetSdkVersion
@@ -121,6 +123,10 @@ dependencies {
     //Maps & Geofencing
     implementation "com.google.android.gms:play-services-location:$playServicesVersion"
     implementation "com.google.android.gms:play-services-maps:$playServicesVersion"
+
+    //Firebase Auth
+    implementation 'com.firebaseui:firebase-ui-auth:7.1.1'
+    implementation 'com.android.support:multidex:1.0.3'
 
 
 }
