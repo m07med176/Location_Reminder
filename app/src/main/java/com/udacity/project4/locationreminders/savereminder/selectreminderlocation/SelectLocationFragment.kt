@@ -2,14 +2,19 @@ package com.udacity.project4.locationreminders.savereminder.selectreminderlocati
 
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import android.view.*
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import com.google.android.gms.common.api.ApiException
@@ -27,13 +32,28 @@ import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
+import iti.android.gpslocation.GPSUtils
+import iti.android.gpslocation.PermissionUtils.Companion.onRequestPermissionsResult
 import org.koin.android.ext.android.inject
+import java.util.*
 
-class SelectLocationFragment : BaseFragment() {
+private const val DEFAULT_ZOOM_LEVEL =15f
+
+class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
+
+    private val TAG = SelectLocationFragment::class.java.simpleName
 
     //Use Koin to get the view model of the SaveReminder
     override val _viewModel: SaveReminderViewModel by inject()
     private lateinit var binding: FragmentSelectLocationBinding
+    private lateinit var map: GoogleMap
+    private var marker: Marker? = null
+
+
+
+    private val fusedLocationProviderClient by lazy {
+        LocationServices.getFusedLocationProviderClient(requireActivity())
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -47,45 +67,105 @@ class SelectLocationFragment : BaseFragment() {
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
 
-//        TODO: add the map setup implementation
-//        TODO: zoom to the user location after taking his permission
-//        TODO: add style to the map
-//        TODO: put a marker to location that the user selected
 
-
-//        TODO: call this function after the user confirms on the selected location
-        onLocationSelected()
+        val mapFragment = childFragmentManager
+            .findFragmentById(R.id.mapFragment) as SupportMapFragment
+        mapFragment.getMapAsync(this)
 
         return binding.root
     }
 
-    private fun onLocationSelected() {
-        //        TODO: When the user confirms on the selected location,
-        //         send back the selected location details to the view model
-        //         and navigate back to the previous fragment to save the reminder and add the geofence
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        binding.saveButton.setOnClickListener {
+            onLocationSelected()
+        }
+    }
+
+    override fun onMapReady(googleMap: GoogleMap) {
+        map = googleMap
+        MapUtils.setMapStyle(map,requireContext())
+        MapUtils.setPoiClick(map)
+        MapUtils.setMapLongClick(map,requireContext())
+
+        GPSUtils.getLastLocation(requireActivity()){location->
+            val userLocation = LatLng(location.latitude, location.longitude)
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, DEFAULT_ZOOM_LEVEL))
+            marker=  map.addMarker(
+                MarkerOptions().position(userLocation)
+                    .title("Location")
+            )
+            marker?.showInfoWindow()
+        }
     }
 
 
+
+    private fun onLocationSelected() {
+
+        marker?.let {marker ->
+            _viewModel.latitude.value = marker.position.latitude
+            _viewModel.longitude.value = marker.position.longitude
+            _viewModel.reminderSelectedLocationStr.value = marker.title
+            _viewModel.navigationCommand.value = NavigationCommand.Back
+        }
+
+    }
+
+
+
+
+
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        GPSUtils.locationPermissionList.onRequestPermissionsResult(requestCode, permissions, grantResults){
+            when(it){
+                Manifest.permission.ACCESS_FINE_LOCATION->{
+                    Toast.makeText(
+                        requireContext(),
+                        "TO record Location please allow access location permission",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                Manifest.permission.ACCESS_COARSE_LOCATION->{
+                    Toast.makeText(
+                        requireContext(),
+                        "TO record Location please allow access location permission",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+
+
+
+
+    // region Options
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.map_options, menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        // TODO: Change the map type based on the user's selection.
         R.id.normal_map -> {
+            map.mapType = GoogleMap.MAP_TYPE_NORMAL
             true
         }
         R.id.hybrid_map -> {
+            map.mapType = GoogleMap.MAP_TYPE_HYBRID
             true
         }
         R.id.satellite_map -> {
+            map.mapType = GoogleMap.MAP_TYPE_SATELLITE
             true
         }
         R.id.terrain_map -> {
+            map.mapType = GoogleMap.MAP_TYPE_TERRAIN
             true
         }
         else -> super.onOptionsItemSelected(item)
     }
-
-
+    // endregion Options
 }
