@@ -78,4 +78,12 @@ class RemindersLocalRepository(
         }
 
     }
+
+    override suspend fun delete(id: String) {
+        wrapEspressoIdlingResource {
+            withContext(ioDispatcher) {
+                remindersDao.delete(id)
+            }
+        }
+    }
 }
